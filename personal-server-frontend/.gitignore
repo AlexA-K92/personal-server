@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Builds
+dist/
+build/
+*/dist/
+*/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# C build artifacts
+personal-server-c/server
+personal-server-c/client
+personal-server-c/*.o
+personal-server-c/*.dSYM/
+
+# Local credential database
+personal-server-c/user_db.txt
+
+# Local TLS certificates and private keys
+personal-server-c/certs/
+!personal-server-c/certs/.gitkeep
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Misc
+coverage/
+.cache/

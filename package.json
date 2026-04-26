@@ -1,0 +1,17 @@
+{
+  "name": "privatevault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PrivateVault personal database with React UI, Node bridge, and C TLS authentication server.",
+  "scripts": {
+    "dev": "concurrently -k --names C-SERVER,BRIDGE,FRONTEND --prefix-colors blue,magenta,green \"npm run dev:c\" \"npm run dev:bridge\" \"npm run dev:frontend\"",
+    "dev:c": "cd personal-server-c && make && ./server",
+    "dev:bridge": "npm --prefix personal-server-bridge run dev",
+    "dev:frontend": "npm --prefix personal-server-frontend run dev -- --host 127.0.0.1 --port 5173",
+    "setup:local": "node scripts/setup-local.js",
+    "clean:local": "rm -rf personal-server-c/certs personal-server-c/user_db.txt personal-server-c/*.o personal-server-c/server personal-server-c/client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
