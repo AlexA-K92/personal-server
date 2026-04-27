@@ -422,9 +422,24 @@ app.post("/api/disconnect", async (req, res) => {
   });
 });
 
-app.listen(BRIDGE_PORT, () => {
-  console.log(`[BRIDGE] Running on http://localhost:${BRIDGE_PORT}`);
+const server = app.listen(BRIDGE_PORT, "127.0.0.1", () => {
+  console.log(`[BRIDGE] Running on http://127.0.0.1:${BRIDGE_PORT}`);
   console.log(
     `[BRIDGE] Expecting C TLS server at ${C_SERVER_HOST}:${C_SERVER_PORT}`
   );
+});
+
+server.on("error", (err) => {
+  console.error(`[BRIDGE] Failed to start server: ${err.message}`);
+  process.exit(1);
+});
+
+process.on("SIGTERM", () => {
+  console.log("[BRIDGE] Received SIGTERM. Shutting down.");
+  server.close(() => process.exit(0));
+});
+
+process.on("SIGINT", () => {
+  console.log("[BRIDGE] Received SIGINT. Shutting down.");
+  server.close(() => process.exit(0));
 });
