@@ -1,4 +1,5 @@
-import { ChangeEvent, useState } from "react";
+import { useState } from "react";
+import type { ChangeEvent } from "react";
 import { FileLock2, Upload } from "lucide-react";
 
 type LocalFile = {
