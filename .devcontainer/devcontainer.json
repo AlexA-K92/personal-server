@@ -1,0 +1,23 @@
+{
+  "name": "PrivateVault",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y build-essential openssl libssl-dev pkg-config && npm install && npm --prefix personal-server-frontend install && npm --prefix personal-server-bridge install",
+  "forwardPorts": [5173, 4000, 9090],
+  "portsAttributes": {
+    "5173": {
+      "label": "PrivateVault UI",
+      "onAutoForward": "openBrowser"
+    },
+    "4000": {
+      "label": "PrivateVault Bridge"
+    },
+    "9090": {
+      "label": "PrivateVault C TLS Server"
+    }
+  }
+}
