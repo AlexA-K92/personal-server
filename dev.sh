@@ -56,4 +56,16 @@ echo ""
 echo "Press Control+C to stop everything."
 echo ""
 
+for port in 9090 4000 5173; do
+  if lsof -nP -iTCP:$port -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "[error] Port $port is already in use."
+    echo "Run this to see the process:"
+    echo "lsof -nP -iTCP:$port -sTCP:LISTEN"
+    echo ""
+    echo "Then kill it with:"
+    echo "kill -9 <PID>"
+    exit 1
+  fi
+done
+
 npm run dev
