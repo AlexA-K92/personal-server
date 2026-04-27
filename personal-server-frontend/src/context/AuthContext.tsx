@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 export type Role = "GUEST" | "ADMIN";
 
@@ -9,57 +9,66 @@ export type User = {
 };
 
 type AuthContextValue = {
+  isLoading: boolean;
   isAuthenticated: boolean;
   user: User | null;
   role: Role | null;
   isAdmin: boolean;
   isGuest: boolean;
-  loginAsGuest: () => void;
+  loginAsGuest: () => Promise<void>;
   loginAsAdmin: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STORAGE_KEY = "personal_server_user";
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const storedUser = localStorage.getItem(STORAGE_KEY);
-
-    if (!storedUser) return null;
-
-    try {
-      const parsed = JSON.parse(storedUser) as Partial<User>;
-
-      if (!parsed.username || !parsed.displayName || !parsed.role) {
-        localStorage.removeItem(STORAGE_KEY);
-        return null;
-      }
-
-      return parsed as User;
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   const isAuthenticated = Boolean(user);
   const role = user?.role ?? null;
   const isAdmin = role === "ADMIN";
   const isGuest = role === "GUEST";
 
-  function saveUser(nextUser: User) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-    setUser(nextUser);
+  async function loadCurrentUser() {
+    try {
+      const response = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        setUser(null);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.ok && data.user) {
+        setUser(data.user as User);
+      } else {
+        setUser(null);
+      }
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  function loginAsGuest() {
-    saveUser({
-      username: "guest",
-      displayName: "Guest Visitor",
-      role: "GUEST",
+  async function loginAsGuest() {
+    const response = await fetch("/api/auth/guest", {
+      method: "POST",
+      credentials: "include",
     });
+
+    const data = await response.json();
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || "Guest login failed.");
+    }
+
+    setUser(data.user as User);
   }
 
   async function loginAsAdmin(username: string, password: string) {
@@ -72,26 +81,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
 
-    if (!response.ok || data.ok === false) {
-      throw new Error(data.error || "Admin login failed.");
+    let data;
+
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error("Admin login returned an invalid server response.");
     }
 
-    saveUser(data.user as User);
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || "Invalid admin credentials.");
+    }
+
+    setUser(data.user as User);
   }
 
-  function logout() {
-    localStorage.removeItem(STORAGE_KEY);
-    setUser(null);
+  async function logout() {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      setUser(null);
+    }
   }
+
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
+        isLoading,
         isAuthenticated,
         user,
         role,

@@ -7,8 +7,16 @@ import { VaultPage } from "./pages/VaultPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ConnectionPage } from "./pages/ConnectionPage";
 
+function LoadingScreen() {
+  return <div className="loading-screen">Loading PrivateVault...</div>;
+}
+
 function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -18,7 +26,11 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -34,7 +46,11 @@ function RoleRoute({
   allowedRoles: Role[];
   children: React.ReactNode;
 }) {
-  const { user } = useAuth();
+  const { isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   if (!user) {
     return <Navigate to="/login" replace />;

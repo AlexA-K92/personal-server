@@ -9,8 +9,9 @@
     "dev:bridge": "npm --prefix personal-server-bridge run dev",
     "dev:frontend": "npm --prefix personal-server-frontend run dev -- --host 127.0.0.1 --port 5173",
     "setup:local": "node scripts/setup-local.js",
+    "create:owner": "node scripts/create-owner-user.js",
     "clean:local": "rm -rf personal-server-c/certs personal-server-c/user_db.txt personal-server-c/*.o personal-server-c/server personal-server-c/client"
-  },
+},
   "devDependencies": {
     "concurrently": "^9.1.2"
   }

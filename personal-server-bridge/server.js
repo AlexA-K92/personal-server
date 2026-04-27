@@ -4,10 +4,18 @@ const tls = require("tls");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const SESSION_COOKIE_NAME = "privatevault_session";
+const sessions = new Map();
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://127.0.0.1:5173",
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 const BRIDGE_PORT = 4000;
@@ -28,6 +36,7 @@ let authenticated = false;
 let currentUser = null;
 let lastError = null;
 let eventLog = [];
+
 
 function addLog(message) {
   const entry = {
@@ -52,6 +61,78 @@ function getStatus() {
     log: eventLog,
   };
 }
+
+
+function parseCookies(req) {
+  const header = req.headers.cookie;
+
+  if (!header) {
+    return {};
+  }
+
+  return header.split(";").reduce((cookies, pair) => {
+    const index = pair.indexOf("=");
+
+    if (index === -1) {
+      return cookies;
+    }
+
+    const key = pair.slice(0, index).trim();
+    const value = pair.slice(index + 1).trim();
+
+    cookies[key] = decodeURIComponent(value);
+    return cookies;
+  }, {});
+}
+
+function createSession(res, user) {
+  const sessionId = crypto.randomBytes(32).toString("hex");
+
+  sessions.set(sessionId, {
+    user,
+    createdAt: Date.now(),
+  });
+
+  res.cookie(SESSION_COOKIE_NAME, sessionId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 1000 * 60 * 60 * 8,
+  });
+}
+
+function getSessionUser(req) {
+  const cookies = parseCookies(req);
+  const sessionId = cookies[SESSION_COOKIE_NAME];
+
+  if (!sessionId) {
+    return null;
+  }
+
+  const session = sessions.get(sessionId);
+
+  if (!session) {
+    return null;
+  }
+
+  return session.user;
+}
+
+function clearSession(req, res) {
+  const cookies = parseCookies(req);
+  const sessionId = cookies[SESSION_COOKIE_NAME];
+
+  if (sessionId) {
+    sessions.delete(sessionId);
+  }
+
+  res.clearCookie(SESSION_COOKIE_NAME, {
+    path: "/",
+  });
+}
+
+
 
 function cleanupSocket() {
   connected = false;
@@ -171,7 +252,7 @@ async function performAdminAuth(socket, username, password) {
   const challengeParts = challengeLine.split(" ");
 
   if (challengeParts[0] !== "AUTH_CHALLENGE") {
-    throw new Error(challengeLine || "Expected AUTH_CHALLENGE from C server.");
+    throw new Error("Invalid admin credentials.");
   }
 
   const saltHex = challengeParts[1];
@@ -226,6 +307,38 @@ app.get("/api/status", (req, res) => {
   res.json(getStatus());
 });
 
+app.get("/api/auth/me", (req, res) => {
+  const user = getSessionUser(req);
+
+  if (!user) {
+    return res.status(401).json({
+      ok: false,
+      user: null,
+    });
+  }
+
+  res.json({
+    ok: true,
+    user,
+  });
+});
+
+app.post("/api/auth/guest", (req, res) => {
+  const guestUser = {
+    username: "guest",
+    displayName: "Guest Visitor",
+    role: "GUEST",
+  };
+
+  createSession(res, guestUser);
+
+  res.json({
+    ok: true,
+    user: guestUser,
+    status: getStatus(),
+  });
+});
+
 app.post("/api/auth/admin-login", async (req, res) => {
   const { username, password } = req.body;
 
@@ -247,7 +360,6 @@ app.post("/api/auth/admin-login", async (req, res) => {
     addLog(
       `[BRIDGE] Admin login TLS connection established using ${socket.getCipher().name}.`
     );
-
     const user = await performAdminAuth(socket, username, password);
 
     tlsSocket = socket;
@@ -258,6 +370,8 @@ app.post("/api/auth/admin-login", async (req, res) => {
 
     attachPersistentSocketHandlers(tlsSocket);
 
+    createSession(res, user);
+
     addLog(`[BRIDGE] Admin authenticated as ${user.username}.`);
 
     res.json({
@@ -265,6 +379,10 @@ app.post("/api/auth/admin-login", async (req, res) => {
       user,
       status: getStatus(),
     });
+
+
+
+
   } catch (err) {
     const message = err instanceof Error ? err.message : "Admin login failed.";
     lastError = message;
@@ -293,7 +411,9 @@ app.post("/api/auth/logout", async (req, res) => {
     // Ignore logout send errors.
   }
 
+  clearSession(req, res);
   cleanupSocket();
+
   addLog("[BRIDGE] Logged out and disconnected.");
 
   res.json({

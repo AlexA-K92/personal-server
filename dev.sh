@@ -23,11 +23,23 @@ fi
 
 if ! command_exists openssl; then
   echo "[error] OpenSSL is required but not installed."
+  echo ""
+  echo "Install instructions:"
+  echo "  macOS:        brew install openssl@3 pkg-config"
+  echo "  Ubuntu/Linux: sudo apt update && sudo apt install openssl libssl-dev"
+  echo "  Windows:      use WSL Ubuntu, then install openssl libssl-dev"
+  echo ""
   exit 1
 fi
 
 if ! command_exists make; then
   echo "[error] make is required but not installed."
+  echo ""
+  echo "Install instructions:"
+  echo "  macOS:        xcode-select --install"
+  echo "  Ubuntu/Linux: sudo apt update && sudo apt install build-essential"
+  echo "  Windows:      use WSL Ubuntu, then install build-essential"
+  echo ""
   exit 1
 fi
 
@@ -49,9 +61,13 @@ echo ""
 echo "Frontend will be available at:"
 echo "http://127.0.0.1:5173"
 echo ""
-echo "Default local demo admin:"
-echo "username: alex.araki"
-echo "password: demo-password"
+echo "Guest access:"
+echo "Click Continue as Guest in the UI."
+echo ""
+echo "Admin access:"
+echo "Admin login is owner-only."
+echo "The owner must privately create personal-server-c/user_db.txt with:"
+echo "npm run create:owner"
 echo ""
 echo "Press Control+C to stop everything."
 echo ""

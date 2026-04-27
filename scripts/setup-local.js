@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const { execFileSync } = require("child_process");
 
 const rootDir = path.join(__dirname, "..");
@@ -8,20 +7,16 @@ const cDir = path.join(rootDir, "personal-server-c");
 const certsDir = path.join(cDir, "certs");
 const userDbPath = path.join(cDir, "user_db.txt");
 
-const adminUsername = process.env.PRIVATEVAULT_ADMIN_USER || "alex.araki";
-const adminPassword = process.env.PRIVATEVAULT_ADMIN_PASSWORD || "demo-password";
-
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }
 
-function run(command, args, options = {}) {
+function run(command, args) {
   console.log(`[setup] ${command} ${args.join(" ")}`);
   execFileSync(command, args, {
     stdio: "inherit",
-    ...options,
   });
 }
 
@@ -109,33 +104,23 @@ function generateCertsIfMissing() {
   console.log("[setup] Generated local TLS certificates.");
 }
 
-function generateUserDbIfMissing() {
+function checkUserDb() {
   if (fileExists(userDbPath)) {
-    console.log("[setup] user_db.txt already exists. Skipping user generation.");
+    console.log("[setup] Private owner credential database found.");
+    console.log("[setup] Admin login is available for the configured owner account.");
     return;
   }
 
-  const salt = crypto.randomBytes(16);
-  const key = crypto.pbkdf2Sync(adminPassword, salt, 100000, 32, "sha256");
-
-  const line = `${adminUsername}:ADMIN:${salt.toString("hex")}:${key.toString("hex")}\n`;
-
-  fs.writeFileSync(userDbPath, line, { mode: 0o600 });
-
-  console.log("[setup] Generated local user_db.txt.");
-  console.log(`[setup] Demo admin username: ${adminUsername}`);
-
-  if (!process.env.PRIVATEVAULT_ADMIN_PASSWORD) {
-    console.log("[setup] Demo admin password: demo-password");
-    console.log("[setup] Set PRIVATEVAULT_ADMIN_PASSWORD to create a custom local password.");
-  }
+  console.log("[setup] No private owner credential database found.");
+  console.log("[setup] Guest mode will work.");
+  console.log("[setup] Admin login will remain unavailable until the owner privately creates user_db.txt.");
 }
 
 function main() {
   console.log("[setup] Preparing PrivateVault local development environment...");
 
   generateCertsIfMissing();
-  generateUserDbIfMissing();
+  checkUserDb();
 
   console.log("[setup] Local setup complete.");
 }
