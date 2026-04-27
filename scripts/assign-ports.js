@@ -6,6 +6,8 @@ const rootDir = path.join(__dirname, "..");
 const shellOutputPath = path.join(rootDir, ".privatevault-ports.sh");
 const jsonOutputPath = path.join(rootDir, ".privatevault-ports.json");
 
+const isCodespaces = Boolean(process.env.CODESPACES);
+
 function range(start, end) {
   const ports = [];
 
@@ -16,24 +18,19 @@ function range(start, end) {
   return ports;
 }
 
-/*
-  Use allowlisted development ranges only.
-
-  We are not scanning the whole machine or touching privileged/system ports.
-  These ranges are intentionally above 1024 and grouped by service type.
-*/
 const candidates = {
-  frontend: [
-    ...range(5173, 5199), // Vite-style dev ports
-    ...range(3000, 3020), // common frontend fallback range
-  ],
+  frontend: isCodespaces
+    ? [5173, ...range(5174, 5199), ...range(3000, 3020)]
+    : [...range(5173, 5199), ...range(3000, 3020)],
+
   bridge: [
-    ...range(4273, 4299), // PrivateVault bridge preferred range
-    ...range(4000, 4099), // common API fallback range
+    ...range(4273, 4299),
+    ...range(4000, 4099),
   ],
+
   cServer: [
-    ...range(6273, 6299), // PrivateVault C server preferred range
-    ...range(9090, 9099), // previous fallback range
+    ...range(6273, 6299),
+    ...range(9090, 9099),
   ],
 };
 
@@ -92,8 +89,7 @@ async function main() {
   const bridgePort = await pickPort("bridge", candidates.bridge, selected);
   const cPort = await pickPort("C TLS server", candidates.cServer, selected);
 
-  const frontendHost = process.env.CODESPACES ? "0.0.0.0" : "127.0.0.1";
-  const frontendDisplayHost = "127.0.0.1";
+  const frontendHost = isCodespaces ? "0.0.0.0" : "127.0.0.1";
 
   const config = {
     PRIVATEVAULT_FRONTEND_HOST: frontendHost,
@@ -101,7 +97,7 @@ async function main() {
     PRIVATEVAULT_BRIDGE_PORT: String(bridgePort),
     PRIVATEVAULT_C_PORT: String(cPort),
     PRIVATEVAULT_C_HOST: "127.0.0.1",
-    PRIVATEVAULT_FRONTEND_ORIGIN: `http://${frontendDisplayHost}:${frontendPort}`,
+    PRIVATEVAULT_FRONTEND_ORIGIN: `http://127.0.0.1:${frontendPort}`,
   };
 
   const shellLines = [
@@ -118,7 +114,7 @@ async function main() {
   fs.writeFileSync(jsonOutputPath, JSON.stringify(config, null, 2));
 
   console.log("[ports] Assigned ports:");
-  console.log(`[ports] Frontend UI:  http://${frontendDisplayHost}:${frontendPort}`);
+  console.log(`[ports] Frontend UI:  http://127.0.0.1:${frontendPort}`);
   console.log(`[ports] Node bridge:  http://127.0.0.1:${bridgePort}`);
   console.log(`[ports] C TLS server: 127.0.0.1:${cPort}`);
   console.log(`[ports] Wrote ${path.basename(shellOutputPath)}.`);

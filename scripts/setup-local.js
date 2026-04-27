@@ -144,7 +144,8 @@ function generateOwnerUserDbIfPossible() {
 
   const entry = `${normalizedUsername}:ADMIN:${salt.toString("hex")}:${key.toString("hex")}\n`;
 
-  fs.writeFileSync(userDbPath, entry, { mode: 0o600 });
+  fs.writeFileSync(userDbPath, entry, { mode: 0o400 });
+  fs.chmodSync(userDbPath, 0o400);
 
   console.log("[setup] Generated private owner credential database from environment secrets.");
   console.log(`[setup] Owner admin username: ${normalizedUsername}`);

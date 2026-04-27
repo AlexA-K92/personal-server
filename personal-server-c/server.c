@@ -277,7 +277,7 @@ static int authenticate_client(SSL *ssl, UserRecord *authenticated_user) {
     }
 
     if (!verify_challenge_response(&user, nonce, response_hex)) {
-        ssl_send_line(ssl, "AUTH_FAIL invalid_credentials\n");
+        ssl_send_line(ssl, "AUTH_FAIL unknown user\n");
         return 0;
     }
 

@@ -38,6 +38,8 @@ let currentUser = null;
 let lastError = null;
 let eventLog = [];
 
+const SESSION_COOKIE_NAME = "privatevault_session";
+const sessions = new Map();
 
 function addLog(message) {
   const entry = {
@@ -62,7 +64,6 @@ function getStatus() {
     log: eventLog,
   };
 }
-
 
 function parseCookies(req) {
   const header = req.headers.cookie;
@@ -133,8 +134,6 @@ function clearSession(req, res) {
   });
 }
 
-
-
 function cleanupSocket() {
   connected = false;
   authenticated = false;
@@ -167,7 +166,10 @@ function createTlsConnection() {
         rejectUnauthorized: true,
       },
       () => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
+
         settled = true;
         socket.setTimeout(0);
         resolve(socket);
@@ -175,14 +177,20 @@ function createTlsConnection() {
     );
 
     socket.setTimeout(5000, () => {
-      if (settled) return;
+      if (settled) {
+        return;
+      }
+
       settled = true;
       socket.destroy();
       reject(new Error("TLS connection timed out."));
     });
 
     socket.once("error", (err) => {
-      if (settled) return;
+      if (settled) {
+        return;
+      }
+
       settled = true;
       socket.destroy();
       reject(err);
@@ -193,6 +201,7 @@ function createTlsConnection() {
 function attachPersistentSocketHandlers(socket) {
   socket.on("close", () => {
     addLog("[BRIDGE] TLS socket closed.");
+
     connected = false;
     authenticated = false;
     currentUser = null;
@@ -211,8 +220,11 @@ function sendLine(socket, line) {
     const message = line.endsWith("\n") ? line : `${line}\n`;
 
     socket.write(message, "utf8", (err) => {
-      if (err) reject(err);
-      else resolve();
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
     });
   });
 }
@@ -260,7 +272,7 @@ async function performAdminAuth(socket, username, password) {
   const nonceHex = challengeParts[2];
 
   if (!saltHex || !nonceHex) {
-    throw new Error("Malformed AUTH_CHALLENGE from C server.");
+    throw new Error("Invalid admin credentials.");
   }
 
   const salt = Buffer.from(saltHex, "hex");
@@ -294,7 +306,7 @@ async function performAdminAuth(socket, username, password) {
   const role = resultParts[2];
 
   if (role !== "ADMIN") {
-    throw new Error("Authenticated user is not an admin.");
+    throw new Error("Invalid admin credentials.");
   }
 
   return {
@@ -361,6 +373,7 @@ app.post("/api/auth/admin-login", async (req, res) => {
     addLog(
       `[BRIDGE] Admin login TLS connection established using ${socket.getCipher().name}.`
     );
+
     const user = await performAdminAuth(socket, username, password);
 
     tlsSocket = socket;
@@ -380,12 +393,9 @@ app.post("/api/auth/admin-login", async (req, res) => {
       user,
       status: getStatus(),
     });
-
-
-
-
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Admin login failed.";
+    const message = err instanceof Error ? err.message : "Invalid admin credentials.";
+
     lastError = message;
     addLog(`[BRIDGE] Admin login failed: ${message}`);
 
@@ -397,7 +407,7 @@ app.post("/api/auth/admin-login", async (req, res) => {
 
     res.status(401).json({
       ok: false,
-      error: message,
+      error: "Invalid admin credentials.",
       status: getStatus(),
     });
   }
@@ -456,6 +466,7 @@ app.post("/api/connect", async (req, res) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Connection failed.";
+
     lastError = message;
     addLog(`[BRIDGE] Connection failed: ${message}`);
 
@@ -511,6 +522,7 @@ app.post("/api/send", async (req, res) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed.";
+
     lastError = message;
     addLog(`[BRIDGE] Send failed: ${message}`);
 
@@ -548,6 +560,7 @@ const server = app.listen(BRIDGE_PORT, "127.0.0.1", () => {
   console.log(
     `[BRIDGE] Expecting C TLS server at ${C_SERVER_HOST}:${C_SERVER_PORT}`
   );
+  console.log(`[BRIDGE] Allowed frontend origin: ${FRONTEND_ORIGIN}`);
 });
 
 server.on("error", (err) => {
