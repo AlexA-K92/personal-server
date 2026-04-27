@@ -28,6 +28,10 @@ personal-server-c/*.dSYM/
 # Local generated credential database
 personal-server-c/user_db.txt
 
+# Generated local runtime port config
+.privatevault-ports.sh
+.privatevault-ports.json
+
 # Local generated TLS certs and keys
 personal-server-c/certs/*
 !personal-server-c/certs/.gitkeep

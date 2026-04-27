@@ -52,36 +52,36 @@ npm --prefix personal-server-frontend install
 echo "[dev] Installing bridge dependencies..."
 npm --prefix personal-server-bridge install
 
-echo "[dev] Preparing local TLS certificates and local demo user..."
+echo "[dev] Assigning local development ports..."
+node scripts/assign-ports.js
+
+# shellcheck disable=SC1091
+source .privatevault-ports.sh
+
+echo "[dev] Preparing local TLS certificates and owner credential state..."
 node scripts/setup-local.js
 
 echo ""
 echo "[dev] Starting C server, bridge, and frontend..."
 echo ""
 echo "Frontend will be available at:"
-echo "http://127.0.0.1:5173"
+echo "http://127.0.0.1:${PRIVATEVAULT_FRONTEND_PORT}"
+echo ""
+echo "Assigned services:"
+echo "Frontend UI:  http://127.0.0.1:${PRIVATEVAULT_FRONTEND_PORT}"
+echo "Node bridge:  http://127.0.0.1:${PRIVATEVAULT_BRIDGE_PORT}"
+echo "C TLS server: 127.0.0.1:${PRIVATEVAULT_C_PORT}"
 echo ""
 echo "Guest access:"
 echo "Click Continue as Guest in the UI."
 echo ""
 echo "Admin access:"
 echo "Admin login is owner-only."
-echo "The owner must privately create personal-server-c/user_db.txt with:"
-echo "npm run create:owner"
+echo "In Codespaces, admin login is enabled when these private secrets exist:"
+echo "PRIVATEVAULT_OWNER_USER"
+echo "PRIVATEVAULT_OWNER_PASSWORD"
 echo ""
 echo "Press Control+C to stop everything."
 echo ""
-
-for port in 9090 4000 5173; do
-  if lsof -nP -iTCP:$port -sTCP:LISTEN >/dev/null 2>&1; then
-    echo "[error] Port $port is already in use."
-    echo "Run this to see the process:"
-    echo "lsof -nP -iTCP:$port -sTCP:LISTEN"
-    echo ""
-    echo "Then kill it with:"
-    echo "kill -9 <PID>"
-    exit 1
-  fi
-done
 
 npm run dev

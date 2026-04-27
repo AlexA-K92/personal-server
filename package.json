@@ -5,12 +5,12 @@
   "description": "PrivateVault personal database with React UI, Node bridge, and C TLS authentication server.",
   "scripts": {
     "dev": "concurrently --kill-others-on-fail --names C-SERVER,BRIDGE,FRONTEND --prefix-colors blue,magenta,green \"npm run dev:c\" \"npm run dev:bridge\" \"npm run dev:frontend\"",
-    "dev:c": "cd personal-server-c && make && ./server",
+    "dev:c": "cd personal-server-c && make && ./server ${PRIVATEVAULT_C_PORT:-9090}",
     "dev:bridge": "npm --prefix personal-server-bridge run dev",
-    "dev:frontend": "npm --prefix personal-server-frontend run dev -- --host 127.0.0.1 --port 5173",
+    "dev:frontend": "npm --prefix personal-server-frontend run dev -- --host ${PRIVATEVAULT_FRONTEND_HOST:-127.0.0.1} --port ${PRIVATEVAULT_FRONTEND_PORT:-5173}",
     "setup:local": "node scripts/setup-local.js",
     "create:owner": "node scripts/create-owner-user.js",
-    "clean:local": "rm -rf personal-server-c/certs personal-server-c/user_db.txt personal-server-c/*.o personal-server-c/server personal-server-c/client"
+    "clean:local": "rm -rf personal-server-c/certs personal-server-c/user_db.txt personal-server-c/*.o personal-server-c/server personal-server-c/client .privatevault-ports.sh .privatevault-ports.json"
 },
   "devDependencies": {
     "concurrently": "^9.1.2"

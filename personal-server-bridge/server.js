@@ -4,23 +4,13 @@ const tls = require("tls");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const SESSION_COOKIE_NAME = "privatevault_session";
-const sessions = new Map();
 
-const app = express();
-
-app.use(
-  cors({
-    origin: "http://127.0.0.1:5173",
-    credentials: true,
-  })
-);
-
-app.use(express.json());
-
-const BRIDGE_PORT = 4000;
-const C_SERVER_HOST = "127.0.0.1";
-const C_SERVER_PORT = 9090;
+const BRIDGE_PORT = Number(process.env.PRIVATEVAULT_BRIDGE_PORT || 4000);
+const C_SERVER_HOST = process.env.PRIVATEVAULT_C_HOST || "127.0.0.1";
+const C_SERVER_PORT = Number(process.env.PRIVATEVAULT_C_PORT || 9090);
+const FRONTEND_ORIGIN =
+  process.env.PRIVATEVAULT_FRONTEND_ORIGIN ||
+  `http://127.0.0.1:${process.env.PRIVATEVAULT_FRONTEND_PORT || 5173}`;
 
 const CA_CERT_PATH = path.join(
   __dirname,
@@ -29,6 +19,17 @@ const CA_CERT_PATH = path.join(
   "certs",
   "ca.crt"
 );
+
+const app = express();
+
+app.use(
+  cors({
+    origin: FRONTEND_ORIGIN,
+    credentials: true,
+  })
+);
+
+app.use(express.json());
 
 let tlsSocket = null;
 let connected = false;

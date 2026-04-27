@@ -31,7 +31,7 @@ typedef struct {
     unsigned char stored_key[KEY_SIZE];
 } UserRecord;
 
-static int create_server_socket(void) {
+static int create_server_socket(int port) {
     int server_fd;
     struct sockaddr_in server_addr;
     int opt = 1;
@@ -51,7 +51,7 @@ static int create_server_socket(void) {
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    server_addr.sin_port = htons(SERVER_PORT);
+    server_addr.sin_port = htons((uint16_t)port);
 
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("[SERVER] bind");
@@ -324,21 +324,37 @@ static void run_command_loop(SSL *ssl, const UserRecord *user) {
     }
 }
 
-int main(void) {
+static int parse_port_or_default(int argc, char *argv[]) {
+    int port = SERVER_PORT;
+
+    if (argc >= 2) {
+        int parsed = atoi(argv[1]);
+
+        if (parsed >= 1024 && parsed <= 65535) {
+            port = parsed;
+        } else {
+            fprintf(stderr, "[SERVER] Invalid port '%s'. Using default %d.\n", argv[1], SERVER_PORT);
+        }
+    }
+
+    return port;
+}
+
+int main(int argc, char *argv[]) {
     SSL_CTX *tls_ctx = create_server_tls_context();
+    int port = parse_port_or_default(argc, argv);
     if (tls_ctx == NULL) {
         fprintf(stderr, "[SERVER] Failed to create TLS context.\n");
         return 1;
     }
 
-    int server_fd = create_server_socket();
+    int server_fd = create_server_socket(port);
     if (server_fd < 0) {
         free_tls_context(tls_ctx);
         return 1;
     }
 
-    printf("[SERVER] PrivateVault TLS auth server listening on 127.0.0.1:%d\n", SERVER_PORT);
-
+        printf("[SERVER] PrivateVault TLS auth server listening on 127.0.0.1:%d\n", port);
     while (1) {
         struct sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);

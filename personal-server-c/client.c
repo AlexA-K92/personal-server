@@ -10,7 +10,25 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-static int connect_to_server(void) {
+
+static int parse_port_or_default(int argc, char *argv[]) {
+    int port = SERVER_PORT;
+
+    if (argc >= 2) {
+        int parsed = atoi(argv[1]);
+
+        if (parsed >= 1024 && parsed <= 65535) {
+            port = parsed;
+        } else {
+            fprintf(stderr, "[CLIENT] Invalid port '%s'. Using default %d.\n", argv[1], SERVER_PORT);
+        }
+    }
+
+    return port;
+}
+
+
+static int connect_to_server(int port) {
     int sock_fd;
     struct sockaddr_in server_addr;
 
@@ -22,7 +40,7 @@ static int connect_to_server(void) {
 
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
+    server_addr.sin_port = htons((uint16_t)port);
 
     if (inet_pton(AF_INET, SERVER_HOST, &server_addr.sin_addr) <= 0) {
         perror("[CLIENT] inet_pton");
@@ -39,14 +57,15 @@ static int connect_to_server(void) {
     return sock_fd;
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
     SSL_CTX *tls_ctx = create_client_tls_context();
+    int port = parse_port_or_default(argc, argv);
     if (tls_ctx == NULL) {
         fprintf(stderr, "[CLIENT] Failed to create TLS context.\n");
         return 1;
     }
 
-    int sock_fd = connect_to_server();
+    int sock_fd = connect_to_server(port);
     if (sock_fd < 0) {
         free_tls_context(tls_ctx);
         return 1;
