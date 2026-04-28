@@ -2,18 +2,6 @@
 
 PrivateVault is a public personal website and private admin database system.
 
-The idea is simple:
-
-- Visitors can open the site and continue as guests.
-- Guests can view public information.
-- Only the owner can sign in as admin.
-- Admin login goes through a custom security pipeline using TLS, salted password-derived credentials, and a nonce-based challenge-response flow.
-
-There is no public signup.  
-There is no default admin account.  
-The real admin credential is never committed to GitHub.
-
----
 
 # Quick Start
 
